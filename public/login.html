@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1a3a">
+  <title>تسجيل الدخول | العالم فون</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <style>
+    :root { --ink: #0e1a3a; --ink2: #16264f; --brand: #2f5bff; --brand2: #6f8cff; --coral: #e8485f; --mint: #12a979; --text: #14203f; --muted: #6a7691; --line: #e2e8f3; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: "IBM Plex Sans Arabic", Tahoma, sans-serif; color: var(--text);
+      min-height: 100vh; display: grid; place-items: center; padding: 20px; overflow: hidden;
+      background: radial-gradient(1200px 700px at 85% -10%, #2a49c9 0%, transparent 60%),
+                  radial-gradient(900px 600px at 0% 110%, #1b3a9a 0%, transparent 55%),
+                  linear-gradient(160deg, var(--ink), var(--ink2));
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(60px); opacity: .45; pointer-events: none; animation: float 12s ease-in-out infinite; }
+    .orb.a { width: 340px; height: 340px; background: #3d63ff; top: -90px; left: -80px; }
+    .orb.b { width: 300px; height: 300px; background: #7a5cff; bottom: -100px; right: -60px; animation-delay: -5s; }
+    @keyframes float { 50% { transform: translate(30px, -26px) scale(1.08); } }
+
+    .card {
+      position: relative; width: min(420px, 100%); background: rgba(255,255,255,.97); border-radius: 26px;
+      padding: 38px 32px 30px; box-shadow: 0 40px 100px rgba(0,0,0,.45);
+      animation: pop .7s cubic-bezier(.2,.9,.3,1.15) both;
+    }
+    @keyframes pop { from { opacity: 0; transform: translateY(28px) scale(.94); } }
+    .logo {
+      width: 78px; height: 78px; margin: -76px auto 14px; border-radius: 24px; display: grid; place-items: center;
+      font-size: 44px; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--brand), #8aa2ff);
+      box-shadow: 0 16px 36px rgba(47,91,255,.55), 0 0 0 7px rgba(255,255,255,.97);
+      animation: logoIn .9s .15s cubic-bezier(.2,.9,.3,1.3) both;
+    }
+    @keyframes logoIn { from { transform: scale(.3) rotate(-30deg); opacity: 0; } }
+    h1 { margin: 0; text-align: center; font-size: 26px; }
+    .sub { margin: 6px 0 26px; text-align: center; color: var(--muted); font-size: 14px; }
+
+    form { display: flex; flex-direction: column; gap: 16px; }
+    label { display: flex; flex-direction: column; gap: 7px; font-size: 13px; font-weight: 500; color: var(--muted); }
+    .field { position: relative; }
+    .field svg.ic { position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%); width: 19px; height: 19px; stroke: #9aa6c2; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; transition: stroke .2s; }
+    input {
+      width: 100%; font: inherit; color: var(--text); background: #f7f9fe; border: 1.5px solid var(--line); border-radius: 13px;
+      padding: 13px 44px; outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+    input::placeholder { color: #a6b0c6; }
+    input:focus { border-color: var(--brand); background: #fff; box-shadow: 0 0 0 4px rgba(47,91,255,.13); }
+    .field:focus-within svg.ic { stroke: var(--brand); }
+    .eye { position: absolute; inset-inline-end: 8px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border: 0; background: transparent; border-radius: 9px; cursor: pointer; display: grid; place-items: center; }
+    .eye:hover { background: #e8eeff; }
+    .eye svg { width: 19px; height: 19px; stroke: #7d8aa8; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .btn {
+      margin-top: 6px; border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: 16px; color: #fff; padding: 14px;
+      border-radius: 13px; background: linear-gradient(135deg, var(--brand), #4f77ff); box-shadow: 0 10px 24px rgba(47,91,255,.38);
+      transition: transform .15s, box-shadow .2s, filter .2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(47,91,255,.5); }
+    .btn:active { transform: scale(.98); }
+    .btn[disabled] { opacity: .75; cursor: wait; transform: none; }
+    .spin { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: rot .7s linear infinite; display: none; }
+    .btn[disabled] .spin { display: inline-block; }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    .msg { min-height: 22px; text-align: center; font-size: 13.5px; font-weight: 600; color: var(--coral); }
+    .card.shake { animation: shake .45s; }
+    @keyframes shake { 20%, 60% { transform: translateX(-9px); } 40%, 80% { transform: translateX(9px); } }
+    .foot { margin-top: 18px; text-align: center; font-size: 12px; color: var(--muted); }
+    .lock { display: inline-flex; align-items: center; gap: 6px; }
+    .lock svg { width: 14px; height: 14px; stroke: var(--mint); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :focus-visible { outline: 3px solid rgba(47,91,255,.5); outline-offset: 2px; }
+    @media (max-width: 420px) { .card { padding: 34px 20px 24px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="orb a"></div><div class="orb b"></div>
+
+  <main class="card" id="card">
+    <div class="logo">ع</div>
+    <h1>العالم فون</h1>
+    <p class="sub">سجّل الدخول للوصول إلى نظام إدارة المحل</p>
+
+    <form id="form" autocomplete="on">
+      <label>اسم المستخدم
+        <div class="field">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+          <input id="username" name="username" type="text" placeholder="اسم المستخدم" autocomplete="username" required autofocus>
+        </div>
+      </label>
+      <label>كلمة السر
+        <div class="field">
+          <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <input id="password" name="password" type="password" placeholder="كلمة السر" autocomplete="current-password" required>
+          <button class="eye" id="eye" type="button" aria-label="إظهار كلمة السر" title="إظهار / إخفاء">
+            <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </label>
+      <div class="msg" id="msg" role="alert"></div>
+      <button class="btn" id="btn" type="submit"><span class="spin"></span><span id="btnText">دخول</span></button>
+    </form>
+
+    <div class="foot"><span class="lock"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>اتصال محمي — للمصرّح لهم فقط</span></div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // إن كانت الجلسة صالحة ننتقل مباشرة للنظام
+    fetch("/api/session").then((r) => r.json()).then((d) => { if (d && d.ok) location.replace("/"); }).catch(() => {});
+
+    $("eye").addEventListener("click", () => {
+      const p = $("password"), show = p.type === "password";
+      p.type = show ? "text" : "password";
+      $("eye").setAttribute("aria-label", show ? "إخفاء كلمة السر" : "إظهار كلمة السر");
+    });
+
+    function fail(text) {
+      $("msg").textContent = text;
+      const c = $("card");
+      c.classList.remove("shake"); void c.offsetWidth; c.classList.add("shake");
+      $("password").select();
+    }
+
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = $("btn");
+      $("msg").textContent = "";
+      btn.disabled = true; $("btnText").textContent = "جارٍ التحقق...";
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: $("username").value, password: $("password").value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          $("btnText").textContent = "تم الدخول ✓";
+          location.replace("/");
+          return;
+        }
+        fail(data.error || "تعذر تسجيل الدخول");
+      } catch (err) {
+        fail("تعذر الاتصال بالخادم");
+      }
+      btn.disabled = false; $("btnText").textContent = "دخول";
+    });
+  </script>
+</body>
+</html>

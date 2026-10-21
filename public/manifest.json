@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "العالم فون - إدارة المحل",
+  "short_name": "العالم فون",
+  "description": "نظام مبيعات وإدارة محل العالم فون",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f1f4fa",
+  "theme_color": "#0e1a3a",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

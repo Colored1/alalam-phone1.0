@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1a3a">
+  <meta name="description" content="نظام إدارة العالم فون">
+  <title>العالم فون | إدارة المحل</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand">
+      <div class="logo">ع</div>
+      <div><h1>العالم فون</h1><small>إدارة المحل</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="tab active" data-page="sale"><i>🛒</i><span>نقطة البيع</span></button>
+      <button class="tab" data-page="history"><i>🧾</i><span>سجل الفواتير</span></button>
+      <button class="tab" data-page="psales"><i>📦</i><span>مبيعات المنتجات</span></button>
+      <button class="tab" data-page="products"><i>🏷️</i><span>المنتجات والمخزون</span></button>
+      <button class="tab" data-page="debts"><i>🤝</i><span>الديون</span></button>
+      <button class="tab" data-page="expenses"><i>💸</i><span>المصروفات</span></button>
+      <button class="tab" data-page="reports"><i>📊</i><span>التقارير</span></button>
+      <button class="tab" data-page="settings"><i>⚙️</i><span>الإعدادات</span></button>
+    </nav>
+    <div class="side-foot"><span class="dot" id="dot"></span><b id="connection">جارٍ الاتصال...</b></div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <div><h2 id="pageTitle">نقطة البيع</h2><p id="todayLabel"></p></div>
+      <div class="actions" style="margin:0">
+        <button class="ghost" onclick="refreshAll(true)">تحديث ↻</button>
+        <button class="ghost" onclick="logout()">خروج ⎋</button>
+      </div>
+    </header>
+
+    <section class="stats">
+      <article class="stat s-blue"><span>مبيعات اليوم</span><strong id="statSales" data-money>0</strong></article>
+      <article class="stat s-mint"><span>فواتير اليوم</span><strong id="statCount">0</strong></article>
+      <article class="stat s-amber"><span>مصروفات اليوم</span><strong id="statExpenses" data-money>0</strong></article>
+      <article class="stat s-coral"><span>ديون لنا</span><strong id="statReceivable" data-money>0</strong></article>
+    </section>
+
+    <main class="content">
+      <!-- نقطة البيع -->
+      <section class="page active" id="page-sale">
+        <div class="bar">
+          <div class="seg" id="modeSeg">
+            <button class="on" data-mode="cards">كروت</button>
+            <button data-mode="products">منتجات</button>
+          </div>
+          <input id="pickerSearch" class="search" placeholder="ابحث بالاسم أو الرمز" oninput="renderPicker()">
+        </div>
+        <div class="picker" id="picker"></div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>الفاتورة الحالية</h3><span class="badge" id="cartCount">0 صنف</span></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
+            <tbody id="cartRows"></tbody>
+          </table></div>
+          <div class="sale-bottom">
+            <label>اسم الزبون (اختياري)<input id="customerName" placeholder="اسم الزبون"></label>
+            <label>المبلغ المدفوع<input id="salePaid" type="number" min="0" placeholder="فارغ = مدفوع بالكامل"></label>
+            <label>ملاحظات (اختياري)<input id="saleNotes" placeholder="ملاحظات الفاتورة"></label>
+            <div class="grand-total"><span>الإجمالي</span><strong id="cartTotal">0</strong></div>
+          </div>
+          <div class="actions">
+            <button class="primary" onclick="completeSale()">حفظ الفاتورة</button>
+            <button class="ghost" onclick="clearCart()">تفريغ</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- سجل الفواتير -->
+      <section class="page" id="page-history">
+        <div class="filters">
+          <label>من<input id="salesFrom" type="date"></label>
+          <label>إلى<input id="salesTo" type="date"></label>
+          <label>النوع<select id="salesType"><option value="">الكل</option><option value="cards">كروت</option><option value="products">منتجات</option><option value="mixed">مختلط</option></select></label>
+          <label>بحث<input id="salesQ" placeholder="رقم الفاتورة أو الزبون"></label>
+          <button class="primary" onclick="loadSales()">عرض</button>
+        </div>
+        <div class="presets" data-p="sales"></div>
+        <div class="totals" id="salesTotals"></div>
+        <div class="actions">
+          <button class="ghost" onclick="printSalesList()">طباعة السجل</button>
+          <button class="ghost" onclick="exportSalesCSV()">تصدير Excel / CSV</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>الفاتورة</th><th>التاريخ</th><th>النوع</th><th>الزبون</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>إجراءات</th></tr></thead>
+          <tbody id="salesRows"></tbody>
+        </table></div>
+      </section>
+
+      <!-- مبيعات المنتجات -->
+      <section class="page" id="page-psales">
+        <div class="filters">
+          <label>من<input id="psFrom" type="date"></label>
+          <label>إلى<input id="psTo" type="date"></label>
+          <button class="primary" onclick="loadProductSales()">عرض</button>
+        </div>
+        <div class="presets" data-p="ps"></div>
+        <div class="totals" id="psTotals"></div>
+        <div class="actions">
+          <button class="ghost" onclick="printProductSales()">طباعة التقرير</button>
+          <button class="ghost" onclick="exportProductSales()">تصدير Excel / CSV</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>التاريخ</th><th>الفاتورة</th><th>المنتج</th><th>الكمية</th><th>سعر البيع</th><th>الإجمالي</th><th>الربح</th><th>إجراءات</th></tr></thead>
+          <tbody id="psRows"></tbody>
+        </table></div>
+      </section>
+
+      <!-- المنتجات -->
+      <section class="page" id="page-products">
+        <form id="productForm" class="form-grid">
+          <label>اسم المنتج<input name="name" required placeholder="شاحن، سماعة، كفر..."></label>
+          <label>رمز المنتج (اختياري)<input name="sku" placeholder="الرمز"></label>
+          <label>تكلفة الشراء<input name="cost_price" type="number" min="0" required placeholder="التكلفة"></label>
+          <label>سعر البيع<input name="sell_price" type="number" min="0" required placeholder="سعر البيع"></label>
+          <label>الكمية<input name="stock" type="number" min="0" required placeholder="الكمية"></label>
+          <button class="primary">إضافة المنتج</button>
+        </form>
+        <div class="filters">
+          <label>بحث<input id="prodQ" placeholder="اسم أو رمز" oninput="renderProducts()"></label>
+          <button class="ghost" onclick="printProducts()">طباعة الجرد</button>
+          <button class="ghost" onclick="exportProducts()">تصدير Excel / CSV</button>
+        </div>
+        <div class="totals" id="prodTotals"></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>المنتج</th><th>الرمز</th><th>التكلفة</th><th>سعر البيع</th><th>المخزون</th><th>إجراءات</th></tr></thead>
+          <tbody id="productRows"></tbody>
+        </table></div>
+      </section>
+
+      <!-- الديون -->
+      <section class="page" id="page-debts">
+        <form id="debtForm" class="form-grid">
+          <label>اسم الشخص<input name="person_name" required placeholder="الاسم"></label>
+          <label>نوع الدين<select name="direction"><option value="receivable">لنا عنده</option><option value="payable">علينا له</option></select></label>
+          <label>السبب<input name="reason" required placeholder="مبلغ، بضاعة، كهرباء..."></label>
+          <label>المبلغ<input name="amount" type="number" min="1" required placeholder="المبلغ"></label>
+          <label>المسدّد حاليًا (اختياري)<input name="paid_amount" type="number" min="0" placeholder="المسدّد"></label>
+          <label>ملاحظات<input name="notes" placeholder="ملاحظات"></label>
+          <button class="primary">حفظ الدين</button>
+        </form>
+        <div class="filters">
+          <label>من<input id="debtFrom" type="date"></label>
+          <label>إلى<input id="debtTo" type="date"></label>
+          <label>النوع<select id="debtDir"><option value="">الكل</option><option value="receivable">لنا عنده</option><option value="payable">علينا له</option></select></label>
+          <label>الحالة<select id="debtStatus"><option value="">الكل</option><option value="open">غير مسدّد</option><option value="closed">مكتمل</option></select></label>
+          <button class="primary" onclick="loadDebts()">عرض</button>
+        </div>
+        <div class="presets" data-p="debts"></div>
+        <div class="totals" id="debtTotals"></div>
+        <div class="actions">
+          <button class="ghost" onclick="printDebts()">طباعة الكشف</button>
+          <button class="ghost" onclick="exportDebts()">تصدير Excel / CSV</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>التاريخ</th><th>الشخص</th><th>النوع</th><th>السبب</th><th>المبلغ</th><th>المسدّد</th><th>المتبقي</th><th>إجراءات</th></tr></thead>
+          <tbody id="debtRows"></tbody>
+        </table></div>
+      </section>
+
+      <!-- المصروفات -->
+      <section class="page" id="page-expenses">
+        <form id="expenseForm" class="form-grid">
+          <label>الوصف<input name="description" required placeholder="كهرباء، أجور، مشتريات..."></label>
+          <label>المبلغ<input name="amount" type="number" min="1" required placeholder="المبلغ"></label>
+          <label>التصنيف<select name="category"><option value="electricity">كهرباء</option><option value="salary">أجور</option><option value="purchase">مشتريات</option><option value="other">أخرى</option></select></label>
+          <label>ملاحظات<input name="notes" placeholder="ملاحظات"></label>
+          <button class="primary">حفظ المصروف</button>
+        </form>
+        <div class="filters">
+          <label>من<input id="expFrom" type="date"></label>
+          <label>إلى<input id="expTo" type="date"></label>
+          <label>التصنيف<select id="expCat"><option value="">الكل</option><option value="electricity">كهرباء</option><option value="salary">أجور</option><option value="purchase">مشتريات</option><option value="other">أخرى</option></select></label>
+          <button class="primary" onclick="loadExpenses()">عرض</button>
+        </div>
+        <div class="presets" data-p="exp"></div>
+        <div class="totals" id="expTotals"></div>
+        <div class="actions">
+          <button class="ghost" onclick="printExpenses()">طباعة الكشف</button>
+          <button class="ghost" onclick="exportExpenses()">تصدير Excel / CSV</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>التاريخ</th><th>الوصف</th><th>التصنيف</th><th>المبلغ</th><th>إجراءات</th></tr></thead>
+          <tbody id="expenseRows"></tbody>
+        </table></div>
+      </section>
+
+      <!-- التقارير -->
+      <section class="page" id="page-reports">
+        <div class="filters">
+          <label>من<input id="repFrom" type="date"></label>
+          <label>إلى<input id="repTo" type="date"></label>
+          <button class="primary" onclick="loadReport()">إنشاء التقرير</button>
+          <button class="ghost" onclick="printReport()">طباعة / PDF</button>
+          <button class="ghost" onclick="exportReport()">تصدير CSV</button>
+        </div>
+        <div class="presets" data-p="rep"></div>
+        <div id="reportContent" class="panel">اختر الفترة ثم اضغط «إنشاء التقرير».</div>
+      </section>
+
+      <!-- الإعدادات -->
+      <section class="page" id="page-settings">
+        <div class="panel">
+          <div class="panel-head"><h3>فئات الكروت</h3></div>
+          <p class="hint">السعر المحفوظ اختياري، ويظهر كاقتراح عند البيع ولا يُدخل تلقائيًا. تغييره لا يعدّل الفواتير القديمة.</p>
+          <form id="cardForm" class="form-grid">
+            <label>اسم الفئة<input name="name" required placeholder="مثال: أبو 1000"></label>
+            <label>القيمة الاسمية<input name="face_value" type="number" min="1" required placeholder="القيمة"></label>
+            <label>السعر المحفوظ (اختياري)<input name="default_price" type="number" min="0" placeholder="السعر"></label>
+            <button class="primary">إضافة فئة</button>
+          </form>
+          <div class="table-wrap"><table>
+            <thead><tr><th>الفئة</th><th>القيمة</th><th>السعر المحفوظ</th><th>إجراءات</th></tr></thead>
+            <tbody id="settingsRows"></tbody>
+          </table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>النسخ الاحتياطي</h3></div>
+          <p class="hint">النسخ تُحفظ في مجلد backups على جهاز الخادم، ويمكنك تنزيلها من هنا وحفظها في مكان آمن.</p>
+          <button class="primary" onclick="makeBackup()">إنشاء نسخة احتياطية</button>
+          <p id="backupResult" class="hint"></p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>الملف</th><th>الحجم</th><th>التاريخ</th><th></th></tr></thead>
+            <tbody id="backupRows"></tbody>
+          </table></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>© <b id="year"></b> العالم فون</span>
+      <span class="credit">تطوير <b id="devName"></b>
+      <a id="devInsta" class="insta" target="_blank" rel="noopener" aria-label="حساب المطوّر على إنستغرام" title="إنستغرام">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1" fill="#fff" stroke="none"/>
+        </svg>
+      </a>
+    </span>
+    </footer>
+  </div>
+</div>
+
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
