@@ -47,7 +47,11 @@ function readCookie(req, name) {
   }
   return "";
 }
-const isAuthed = (req) => validToken(readCookie(req, COOKIE_NAME));
+const bearerToken = (req) => {
+  const h = String(req.headers.authorization || "");
+  return h.startsWith("Bearer ") ? h.slice(7).trim() : "";
+};
+const isAuthed = (req) => validToken(readCookie(req, COOKIE_NAME)) || validToken(bearerToken(req));
 
 // حماية من تخمين كلمة السر: 5 محاولات خاطئة = إيقاف 10 دقائق
 const attempts = new Map();
@@ -74,8 +78,9 @@ app.post("/api/login", (req, res) => {
     return res.status(401).json({ error: "اسم المستخدم أو كلمة السر غير صحيحة" });
   }
   attempts.delete(ip);
-  res.cookie(COOKIE_NAME, makeToken(), { httpOnly: true, sameSite: "lax", maxAge: SESSION_MS, path: "/" });
-  res.json({ ok: true });
+  const token = makeToken();
+  res.cookie(COOKIE_NAME, token, { httpOnly: true, sameSite: "lax", maxAge: SESSION_MS, path: "/" });
+  res.json({ ok: true, token });
 });
 app.post("/api/logout", (req, res) => {
   res.clearCookie(COOKIE_NAME, { path: "/" });
