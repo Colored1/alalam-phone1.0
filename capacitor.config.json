@@ -1,0 +1,8 @@
+{
+  "appId": "com.alalamphone.app",
+  "appName": "العالم فون",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https"
+  }
+}
