@@ -258,9 +258,16 @@ async function loadFromTurso() {
 
 // إرسال كامل النسخة المحلية إلى Turso كعملية واحدة (إما ينجح كله أو لا شيء)
 async function pushToTurso() {
-  const tables = localTablesWithSequence();
+  const tables = localTables(); // بدون sqlite_sequence، فهو يُنشأ تلقائياً
   const stmts = [];
+  // 1) إنشاء الجداول على Turso إن لم تكن موجودة (بنفس تعريفها المحلي)
+  for (const t of tables) {
+    const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?").get(t);
+    if (row && row.sql) stmts.push(row.sql.replace(/^\s*CREATE\s+TABLE\s+/i, "CREATE TABLE IF NOT EXISTS "));
+  }
+  // 2) تفريغ الجداول من الأبناء إلى الآباء
   for (const t of [...tables].reverse()) stmts.push(`DELETE FROM "${t}"`);
+  // 3) إدخال البيانات من الآباء إلى الأبناء
   for (const t of tables) {
     const cols = db.prepare(`PRAGMA table_info("${t}")`).all().map((c) => c.name);
     const rows = db.prepare(`SELECT * FROM "${t}"`).all();
