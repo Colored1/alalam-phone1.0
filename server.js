@@ -1,12 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 const Database = require("better-sqlite3");
+let createClient = null;
+try { ({ createClient } = require("@libsql/client")); } catch (e) { console.error("مكتبة Turso غير موجودة:", e.message); }
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 const DATA_DIR = path.join(ROOT, "data");
@@ -101,6 +103,37 @@ app.use((req, res, next) => {
 
 app.use(express.static(PUBLIC_DIR));
 
+// أي عملية تغيّر البيانات: لا يُرسل الردّ للتطبيق إلا بعد حفظها في Turso
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const NO_SYNC_PATHS = new Set(["/api/login", "/api/logout"]);
+app.use((req, res, next) => {
+  if (!remote || !WRITE_METHODS.has(req.method) || NO_SYNC_PATHS.has(req.path)) return next();
+  const sendJson = res.json.bind(res);
+  res.json = (body) => {
+    scheduleSync()
+      .then(() => sendJson(body))
+      .catch((e) => {
+        console.error("فشل الحفظ في Turso:", e);
+        res.status(500);
+        sendJson({ error: "تعذّر حفظ البيانات في السحابة، حاول مرة أخرى" });
+      });
+    return res;
+  };
+  next();
+});
+
+// ============ التخزين السحابي (Turso) ============
+// البيانات الدائمة محفوظة في Turso. الملف المحلي نسخة عمل فقط يُعاد بناؤها عند التشغيل.
+const TURSO_URL = process.env.TURSO_DATABASE_URL || "";
+const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || "";
+const remote = TURSO_URL && createClient ? createClient({ url: TURSO_URL, authToken: TURSO_TOKEN || undefined }) : null;
+if (remote) {
+  // نبدأ من الصفر دائماً، ثم نملأ البيانات من Turso، حتى لا نخلط بيانات قديمة
+  for (const f of [DB_PATH, DB_PATH + "-wal", DB_PATH + "-shm", DB_PATH + "-journal"]) {
+    try { fs.unlinkSync(f); } catch (e) { /* غير موجود */ }
+  }
+}
+
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
@@ -189,6 +222,60 @@ const auditStmt = db.prepare(
 function logAction(action, entityType, entityId, details) {
   auditStmt.run(action, entityType, entityId == null ? null : String(entityId),
     details ? JSON.stringify(details) : null);
+}
+
+function localTables() {
+  return db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY rowid")
+    .all().map((r) => r.name);
+}
+function localTablesWithSequence() {
+  const seq = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'").get();
+  return seq ? [...localTables(), "sqlite_sequence"] : localTables();
+}
+
+// تحميل كل الجداول من Turso إلى النسخة المحلية عند التشغيل
+async function loadFromTurso() {
+  if (!remote) return;
+  const found = await remote.execute("SELECT name FROM sqlite_master WHERE type='table'");
+  const remoteTables = new Set(found.rows.map((r) => r[0]));
+  if (!remoteTables.size) return; // أول تشغيل: لا توجد بيانات بعد
+  const tables = localTablesWithSequence().filter((t) => remoteTables.has(t));
+  const data = {};
+  for (const t of tables) data[t] = await remote.execute(`SELECT * FROM "${t}"`);
+  db.pragma("foreign_keys = OFF");
+  db.transaction(() => {
+    for (const t of [...tables].reverse()) db.prepare(`DELETE FROM "${t}"`).run();
+    for (const t of tables) {
+      const res = data[t];
+      if (!res.rows.length) continue;
+      const cols = res.columns;
+      const ins = db.prepare(`INSERT INTO "${t}" (${cols.map((c) => `"${c}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`);
+      for (const row of res.rows) ins.run(...cols.map((_, i) => row[i]));
+    }
+  })();
+  db.pragma("foreign_keys = ON");
+}
+
+// إرسال كامل النسخة المحلية إلى Turso كعملية واحدة (إما ينجح كله أو لا شيء)
+async function pushToTurso() {
+  const tables = localTablesWithSequence();
+  const stmts = [];
+  for (const t of [...tables].reverse()) stmts.push(`DELETE FROM "${t}"`);
+  for (const t of tables) {
+    const cols = db.prepare(`PRAGMA table_info("${t}")`).all().map((c) => c.name);
+    const rows = db.prepare(`SELECT * FROM "${t}"`).all();
+    if (!rows.length) continue;
+    const sql = `INSERT INTO "${t}" (${cols.map((c) => `"${c}"`).join(",")}) VALUES (${cols.map(() => "?").join(",")})`;
+    for (const r of rows) stmts.push({ sql, args: cols.map((c) => (r[c] === undefined ? null : r[c])) });
+  }
+  await remote.batch(stmts, "write");
+}
+
+let syncChain = Promise.resolve();
+function scheduleSync() {
+  const p = syncChain.then(pushToTurso);
+  syncChain = p.catch(() => {});
+  return p;
 }
 
 const validId = (v) => Number.isSafeInteger(v) && v > 0;
@@ -666,8 +753,20 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: "حدث خطأ في الخادم" });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Alalam Phone server: http://localhost:${PORT}`);
-  console.log(`Database: ${DB_PATH}`);
-  console.log(`Backups: ${BACKUP_DIR}`);
-});
+async function start() {
+  if (remote) {
+    try {
+      await loadFromTurso();
+      console.log("تم تحميل البيانات من Turso");
+    } catch (e) {
+      // لا نبدأ بقاعدة فارغة، حتى لا نمسح البيانات السحابية عند أول حفظ
+      console.error("فشل تحميل البيانات من Turso، إيقاف الخادم:", e);
+      process.exit(1);
+    }
+  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Alalam Phone server: http://localhost:${PORT}`);
+    console.log(`Storage: ${remote ? "Turso" : "local file " + DB_PATH}`);
+  });
+}
+start();
